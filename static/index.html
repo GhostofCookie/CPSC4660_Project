@@ -3,18 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <title>SQL Media Comparer</title>
+    <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
-    <form action="/upload" method="post" enctype="multipart/form-data" onsubmit="return false;">
-        <label for="image">Image: </label><input name="image" id="image" type="file"><br>
-        <input id="submit" type="submit" value="Upload Image">
-    </form>
+    <div class="container">
+        {{if .OrigImg}}
+        <div class="orig-image"><h4>Original</h4><img src="static/temp/{{.OrigImg}}"></div>
+        <div class="pg-image"><h4>Postgres</h4><img src="static/temp/{{.PgImg}}"></div>
+        <div class="mq-image"><h4>MySQL</h4><img src="static/temp/{{.MyImg}}"></div>
+        {{end}}
+
+        <form class="upload" action="/upload" method="post" enctype="multipart/form-data" onsubmit="return false;">
+            <label for="image">Image: </label><input name="image" id="image" type="file"><br>
+            <input id="submit" type="submit" value="Upload Image">
+        </form>
+    </div>
 </body>
 <script>
-
 document.getElementById("submit").addEventListener("click", function(event){
     event.preventDefault();
-   submit();
+    submit();
 });
 
 function submit() {

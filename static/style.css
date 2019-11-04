@@ -1,0 +1,28 @@
+.container {
+    display: grid;
+    grid-template:
+        'pgimage origimage mqimage'
+        '. upload .';
+    grid-template-columns: repeat(3, 1fr);
+}
+
+img {
+    width: 100%;
+}
+
+.orig-image {
+    grid-area: origimage;
+}
+
+.pg-image {
+    grid-area: pgimage;
+}
+
+.mq-image {
+    grid-area: mqimage;
+}
+
+.upload {
+    grid-area: upload;
+    width: 50%;
+}

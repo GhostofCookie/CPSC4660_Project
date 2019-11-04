@@ -9,6 +9,7 @@ import (
 	_ "image/png"
 	"log"
 	"os"
+	"strings"
 )
 
 type ImageManager struct {
@@ -78,8 +79,16 @@ func (im *ImageManager) SaveImage(img image.Image, newFile string) error {
 	if err != nil {
 		return err
 	}
+	format := strings.SplitAfter(newFile, ".")[1]
+	switch format {
+	case "jpeg", "jpg":
+		err = jpeg.Encode(out, img, nil)
+		break
+	case "png":
+		err = png.Encode(out, img)
+		break
+	}
 
-	err = png.Encode(out, img)
 	if err != nil {
 		return err
 	}

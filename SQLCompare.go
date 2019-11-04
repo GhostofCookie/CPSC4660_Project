@@ -15,13 +15,35 @@ var manager ImageManager
 var server *Server
 var logger *os.File
 
+// Benchmark Checks the time elapsed when running a function.
+func Benchmark(name string, fn func() error) {
+	log.Println("=== Benchmark ", "\""+name+"\"", "===")
+	start := time.Now()
+	err := fn()
+	if err != nil {
+		log.Println("!!! Error:", err, "!!!")
+	}
+	elapsed := time.Since(start)
+	log.Println("=== Time Elapsed:", elapsed, "===")
+}
+
 func main() {
 	manager.RegisterFormats()
 
 	server = NewServer()
 	server.HandleHTTP("/upload", UploadImage)
 
-	server.BuildHTMLTemplate("static/index.html", "/", func(w http.ResponseWriter, r *http.Request) interface{} { return struct{}{} })
+	server.BuildHTMLTemplate("static/index.html", "/", func(w http.ResponseWriter, r *http.Request) interface{} {
+		return struct {
+			OrigImg string
+			PgImg   string
+			MyImg   string
+		}{
+			os.Getenv("OrigImg"),
+			os.Getenv("PgImg"),
+			os.Getenv("MyImg"),
+		}
+	})
 
 	server.ConnectDatabases()
 	server.ConnectHTTP(80)
@@ -54,28 +76,47 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	storePostgres := func() error {
 		return server.StoreImage("postgres", name, format, int(handler.Size), bytes)
 	}
-	Benchmark("Postgres: Store", storePostgres)
-	testImg, _ := server.GetImage("postgres", "connected")
 
 	storeMySQL := func() error {
 		return server.StoreImage("mysql", name, format, int(handler.Size), bytes)
 	}
+
+	Benchmark("Postgres: Store", storePostgres)
 	Benchmark("MySQL: Store", storeMySQL)
-	server.GetImage("mysql", "witcher_test")
 
-	img, _, _ := manager.BytesToImage(testImg.contents)
-	manager.SaveImage(img, "test1."+format)
+	os.Setenv("OrigImg", handler.Filename)
+	os.Setenv("PgImg", "pg_"+os.Getenv("OrigImg"))
+	os.Setenv("MyImg", "my_"+os.Getenv("OrigImg"))
+	img, _, _ := manager.BytesToImage(bytes)
+	manager.SaveImage(img, "static/temp/"+os.Getenv("OrigImg"))
 
+	RetrieveImage(w, r)
 }
 
-// Benchmark Checks the time elapsed when running a function.
-func Benchmark(name string, fn func() error) {
-	log.Println("=== Benchmark ", "\""+name+"\"", "===")
-	start := time.Now()
-	err := fn()
-	if err != nil {
-		log.Println("!!! Error:", err, "!!!")
+// RetrieveImage Retrieves image from both Postgres and MySQL and saves them
+// locally to be rendered to the web browser.
+func RetrieveImage(w http.ResponseWriter, r *http.Request) {
+	saveImage := func(imgData Image, dir string) {
+		img, _, _ := manager.BytesToImage(imgData.contents)
+		manager.SaveImage(img, "static/temp/"+dir)
 	}
-	elapsed := time.Since(start)
-	log.Println("=== Time Elapsed:", elapsed, "===")
+
+	var err error
+	var pgImg Image
+	retrievePostgres := func() error {
+		pgImg, err = server.GetImage("postgres", strings.Split(os.Getenv("OrigImg"), ".")[0])
+		return err
+	}
+
+	var myImg Image
+	retrieveMySQL := func() error {
+		myImg, err = server.GetImage("mysql", strings.Split(os.Getenv("OrigImg"), ".")[0])
+		return err
+	}
+
+	Benchmark("Postgres: Retrieve", retrievePostgres)
+	Benchmark("MySQL: Retrieve", retrieveMySQL)
+
+	saveImage(pgImg, os.Getenv("PgImg"))
+	saveImage(myImg, os.Getenv("MyImg"))
 }
