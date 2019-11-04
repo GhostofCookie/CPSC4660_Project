@@ -1,0 +1,4 @@
+#!/bin/bash
+
+ssh-keygen -t rsa -b 2048
+ssh-copy-id tomasrigaux@web542.webfaction.com

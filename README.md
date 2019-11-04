@@ -1,0 +1,3 @@
+# CPSC 4660 - Project
+
+This project serves as an exploration in the comparison between the speed, fidelity, and capability of Postgres and MySQLs abilities to store media data, primarily image based media content. The general metrics here are measured in terms of time (for speed comparison), image quality (after having been stored in the database and been converted from image to bytes and back), and overall fidelity.
