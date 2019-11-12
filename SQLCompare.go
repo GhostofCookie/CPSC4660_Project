@@ -24,7 +24,7 @@ func Benchmark(name string, fn func() error) {
 		log.Println("!!! Error:", err, "!!!")
 	}
 	elapsed := time.Since(start)
-	log.Println("=== Time Elapsed:", elapsed, "===")
+	log.Println("=== Time Elapsed:", elapsed)
 }
 
 func main() {
@@ -32,16 +32,19 @@ func main() {
 
 	server = NewServer()
 	server.HandleHTTP("/upload", UploadImage)
+	server.HandleHTTP("/retrieve", RetrieveImage)
 
 	server.BuildHTMLTemplate("static/index.html", "/", func(w http.ResponseWriter, r *http.Request) interface{} {
 		return struct {
 			OrigImg string
 			PgImg   string
 			MyImg   string
+			Imgs    []string
 		}{
 			os.Getenv("OrigImg"),
 			os.Getenv("PgImg"),
 			os.Getenv("MyImg"),
+			server.GetListImages(),
 		}
 	})
 
@@ -89,28 +92,29 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	os.Setenv("MyImg", "my_"+os.Getenv("OrigImg"))
 	img, _, _ := manager.BytesToImage(bytes)
 	manager.SaveImage(img, "static/temp/"+os.Getenv("OrigImg"))
-
-	RetrieveImage(w, r)
 }
 
 // RetrieveImage Retrieves image from both Postgres and MySQL and saves them
 // locally to be rendered to the web browser.
 func RetrieveImage(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
 	saveImage := func(imgData Image, dir string) {
 		img, _, _ := manager.BytesToImage(imgData.contents)
 		manager.SaveImage(img, "static/temp/"+dir)
 	}
 
+	log.Println(r.FormValue("images"))
+
 	var err error
 	var pgImg Image
 	retrievePostgres := func() error {
-		pgImg, err = server.GetImage("postgres", strings.Split(os.Getenv("OrigImg"), ".")[0])
+		pgImg, err = server.GetImage("postgres", strings.Split(r.FormValue("images"), ".")[0])
 		return err
 	}
 
 	var myImg Image
 	retrieveMySQL := func() error {
-		myImg, err = server.GetImage("mysql", strings.Split(os.Getenv("OrigImg"), ".")[0])
+		myImg, err = server.GetImage("mysql", strings.Split(r.FormValue("images"), ".")[0])
 		return err
 	}
 

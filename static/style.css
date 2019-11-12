@@ -1,6 +1,7 @@
 .container {
     display: grid;
     grid-template:
+        '. retrieve .'
         'pgimage origimage mqimage'
         '. upload .';
     grid-template-columns: repeat(3, 1fr);
@@ -24,5 +25,7 @@ img {
 
 .upload {
     grid-area: upload;
-    width: 50%;
+}
+.retrieve {
+    grid-area: retrieve;
 }
