@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	"image/jpeg"
 	_ "image/jpeg"
@@ -75,6 +76,9 @@ func (im *ImageManager) BytesToImage(imgBytes []byte) (image.Image, string, erro
 
 // SaveImage Saves an image as a file.
 func (im *ImageManager) SaveImage(img image.Image, newFile string) error {
+	if img == nil {
+		return errors.New("Image is null. Cannot create file \"" + newFile + "\"")
+	}
 	out, err := os.Create(newFile)
 	if err != nil {
 		return err

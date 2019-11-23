@@ -12,20 +12,21 @@
         <div class="pg-image"><h4>Postgres</h4><img src="static/temp/{{.PgImg}}"></div>
         <div class="mq-image"><h4>MySQL</h4><img src="static/temp/{{.MyImg}}"></div>
         {{end}}
-
-        <form class="upload" action="/upload" method="post" enctype="multipart/form-data">
-            <label for="image">Image: </label><input name="image" id="image" type="file"><br>
-            <input id="submit_u" type="submit" value="Upload Image">
-        </form>
-        <form class="retrieve" action="/retrieve" method="post" id="retrieve" enctype="application/x-www-form-urlencoded">
-            <select name="images" form="retrieve">
+        
+        <div class="retrieve">
+            <select id="images">
             {{if .Imgs}}
                 {{range $i , $img := .Imgs}}
                 <option value="{{$img}}">{{$img}}</option>
                 {{end}}
             {{end}}
             </select>
-            <input id="submit_r" type="submit" value="Retrieve Image">
+            <button id="submit_r" type="submit">Retrieve Image</button>
+        </div>
+
+        <form class="upload" action="/upload" method="post" enctype="multipart/form-data">
+            <label for="image">Image: </label><input name="image" id="image" type="file"><br>
+            <input id="submit_u" type="submit" value="Upload Image">
         </form>
         
     </div>
@@ -35,15 +36,21 @@ document.getElementById("submit_u").addEventListener("click", function(event){
     event.preventDefault();
     submit("/upload");
 });
-document.getElementById("retrieve").addEventListener("submit", function(event){
+document.getElementById("submit_r").addEventListener("click", function(event){
     event.preventDefault();
-    submit("/retrieve");
+
+    s = document.getElementById("images");
+    data = "{\"images\":\""+s.options[s.selectedIndex].value+"\"}";
+
+    xhr = new XMLHttpRequest()
+    xhr.open("POST", "/retrieve");
+    xhr.send(data);
 });
 
 function submit(url) {
     data = new FormData(document.querySelector('form'));
     xhr = new XMLHttpRequest()
-    xhr.open("POST", url, true);
+    xhr.open("POST", url);
     xhr.send(data);
 }
 </script>

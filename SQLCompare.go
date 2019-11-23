@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"image"
 	_ "image/jpeg"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -34,6 +36,12 @@ func main() {
 	server.HandleHTTP("/upload", UploadImage)
 	server.HandleHTTP("/retrieve", RetrieveImage)
 
+	err := server.ConnectDatabases()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	server.BuildHTMLTemplate("static/index.html", "/", func(w http.ResponseWriter, r *http.Request) interface{} {
 		return struct {
 			OrigImg string
@@ -48,7 +56,6 @@ func main() {
 		}
 	})
 
-	server.ConnectDatabases()
 	server.ConnectHTTP(80)
 }
 
@@ -97,30 +104,46 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 // RetrieveImage Retrieves image from both Postgres and MySQL and saves them
 // locally to be rendered to the web browser.
 func RetrieveImage(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	saveImage := func(imgData Image, dir string) {
-		img, _, _ := manager.BytesToImage(imgData.contents)
-		manager.SaveImage(img, "static/temp/"+dir)
+
+	var response interface{}
+	body, _ := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+
+	json.Unmarshal(body, &response)
+	image := response.(map[string]interface{})["images"].(string)
+
+	if image != "" {
+		var err error
+		var pgImg *Image
+		retrievePostgres := func() error {
+			pgImg, err = server.GetImage("postgres", strings.Split(image, ".")[0])
+			return err
+		}
+
+		var myImg *Image
+		retrieveMySQL := func() error {
+			myImg, err = server.GetImage("mysql", strings.Split(image, ".")[0])
+			return err
+		}
+
+		saveImage := func(imgData *Image, dir string) error {
+			img, _, err := manager.BytesToImage(imgData.contents)
+			if err != nil {
+				return err
+			}
+			return manager.SaveImage(img, "static/temp/"+dir)
+		}
+
+		Benchmark("Postgres: Retrieve", retrievePostgres)
+		Benchmark("MySQL: Retrieve", retrieveMySQL)
+
+		err = saveImage(pgImg, "pg_"+image)
+		if err != nil {
+			log.Println(err)
+		}
+		err = saveImage(myImg, "my_"+image)
+		if err != nil {
+			log.Println(err)
+		}
 	}
-
-	log.Println(r.FormValue("images"))
-
-	var err error
-	var pgImg Image
-	retrievePostgres := func() error {
-		pgImg, err = server.GetImage("postgres", strings.Split(r.FormValue("images"), ".")[0])
-		return err
-	}
-
-	var myImg Image
-	retrieveMySQL := func() error {
-		myImg, err = server.GetImage("mysql", strings.Split(r.FormValue("images"), ".")[0])
-		return err
-	}
-
-	Benchmark("Postgres: Retrieve", retrievePostgres)
-	Benchmark("MySQL: Retrieve", retrieveMySQL)
-
-	saveImage(pgImg, os.Getenv("PgImg"))
-	saveImage(myImg, os.Getenv("MyImg"))
 }
